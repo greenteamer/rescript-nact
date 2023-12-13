@@ -96,7 +96,7 @@ let mapCtx = (untypedCtx: Nact_bindings.ctx) => {
   self: ActorRef(untypedCtx.self),
   parent: ActorRef(untypedCtx.parent),
   path: ActorPath(untypedCtx.path),
-  children: untypedCtx.children |> Js.Dict.keys |> Belt.Set.String.fromArray,
+  children: Belt.Set.String.fromArray(Js.Dict.keys(untypedCtx.children)),
   sender: untypedCtx.sender,
 }
 
@@ -107,7 +107,7 @@ let mapPersistentCtx = (untypedCtx: Nact_bindings.persistentCtx<'incoming>) => {
   path: ActorPath(untypedCtx.path),
   recovering: untypedCtx.recovering->Belt.Option.getWithDefault(false),
   persist: untypedCtx.persist,
-  children: untypedCtx.children |> Js.Dict.keys |> Belt.Set.String.fromArray,
+  children: Belt.Set.String.fromArray(Js.Dict.keys(untypedCtx.children)),
   sender: untypedCtx.sender,
 }
 
@@ -125,7 +125,7 @@ let mapSupervisionCtx = (untypedCtx: Nact_bindings.supervisionCtx) => {
   self: ActorRef(untypedCtx.self),
   parent: ActorRef(untypedCtx.parent),
   path: ActorPath(untypedCtx.path),
-  children: untypedCtx.children |> Js.Dict.keys |> Belt.Set.String.fromArray,
+  children: Belt.Set.String.fromArray(Js.Dict.keys(untypedCtx.children)),
   sender: untypedCtx.sender,
 }
 
@@ -156,7 +156,7 @@ let mapSupervisionFunction = optionalF =>
   | Some(f) =>
     Some(
       (msg, err, ctx) =>
-        f(msg, err, mapSupervisionCtx(ctx)) |> Js.Promise.then_(decision =>
+        f(msg, err, mapSupervisionCtx(ctx))->Js.Promise2.then(decision =>
           Js.Promise.resolve(
             switch decision {
             | Stop => ctx.stop
@@ -199,8 +199,8 @@ let useStatefulSupervisionPolicy = (f, initialState) => {
 let spawn = (~name=?, ~shutdownAfter=?, ~onCrash=?, ActorRef(parent), func, initialState) => {
   open Nact_bindings
   let options = {
-    initialStateFunc: Some((. ctx) => initialState(mapCtx(ctx))),
-    shutdownAfter: shutdownAfter,
+    initialStateFunc: Some(ctx => initialState(mapCtx(ctx))),
+    shutdownAfter,
     onCrash: mapSupervisionFunction(onCrash),
   }
   let f = (state, msg: 'msg, ctx) =>
@@ -215,7 +215,7 @@ let spawnStateless = (~name=?, ~shutdownAfter=?, ActorRef(parent), func) => {
   open Nact_bindings
   let options = {
     initialStateFunc: None,
-    shutdownAfter: shutdownAfter,
+    shutdownAfter,
     onCrash: mapSupervisionFunction(None),
   }
   let f = (msg, ctx) =>
@@ -245,12 +245,12 @@ let spawnPersistent = (
   let stateEncoder = stateEncoder->Belt.Option.getWithDefault(unsafeEncoder)
   let encoder = encoder->Belt.Option.getWithDefault(unsafeEncoder)
   let options: Nact_bindings.persistentActorOptions<'msg, 'parentMsg, 'state> = {
-    initialStateFunc: (. ctx) => initialState(mapPersistentCtx(ctx)),
-    shutdownAfter: shutdownAfter,
+    initialStateFunc: ctx => initialState(mapPersistentCtx(ctx)),
+    shutdownAfter,
     onCrash: mapSupervisionFunction(onCrash),
-    snapshotEvery: snapshotEvery,
-    encoder: encoder,
-    decoder: decoder,
+    snapshotEvery,
+    encoder,
+    decoder,
     snapshotEncoder: stateEncoder,
     snapshotDecoder: stateDecoder,
   }
@@ -280,12 +280,12 @@ let persistentQuery = (
   let stateEncoder = stateEncoder->Belt.Option.getWithDefault(unsafeEncoder)
   let encoder = encoder->Belt.Option.getWithDefault(unsafeEncoder)
   let options: Nact_bindings.persistentQueryOptions<'msg, 'state> = {
-    initialState: initialState,
-    cacheDuration: cacheDuration,
-    snapshotEvery: snapshotEvery,
-    snapshotKey: snapshotKey,
-    encoder: encoder,
-    decoder: decoder,
+    initialState,
+    cacheDuration,
+    snapshotEvery,
+    snapshotKey,
+    encoder,
+    decoder,
     snapshotEncoder: stateEncoder,
     snapshotDecoder: stateDecoder,
   }
@@ -330,8 +330,9 @@ exception QueryTimeout(int)
 
 let query = (~timeout: int, ActorRef(recipient), msgF) => {
   let f = tempReference => msgF(ActorRef(tempReference))
-  Nact_bindings.query(recipient, f, timeout) |> Js.Promise.catch(_ =>
-    Js.Promise.reject(QueryTimeout(timeout))
+  Js.Promise.catch(
+    _ => Js.Promise.reject(QueryTimeout(timeout)),
+    Nact_bindings.query(recipient, f, timeout),
   )
 }
 

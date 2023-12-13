@@ -16,13 +16,9 @@
     "url": "https://github.com/ncthbrt/rescript-nact/issues"
   },
   "scripts": {
-    "prepare": "husky install",
-    "postinstall": "rescript build -with-deps",
     "build": "rescript build",
     "start": "rescript build -w",
-    "clean": "rescript clean",
-    "test": "yarn run build && jest",
-    "prepack": "yarn run clean && yarn run build"
+    "clean": "rescript clean"
   },
   "keywords": [
     "rescript",
@@ -44,17 +40,12 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "rescript": "^9.1.4"
+    "rescript": "11.0.0-rc.6"
   },
   "dependencies": {
     "nact": "^7.6.0"
   },
   "devDependencies": {
-    "@glennsl/bs-jest": "^0.7.0",
-    "@glennsl/bs-json": "^5.0.2",
-    "coveralls": "^3.1.1",
-    "husky": "^7.0.1",
-    "jest": "^27.0.6",
-    "rescript": "^9.1.4"
+    "rescript": "11.0.0-rc.6"
   }
 }
